@@ -1,6 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
-use tauri::Emitter;
 use tauri_plugin_updater::UpdaterExt;
 
 pub mod meta;

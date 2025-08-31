@@ -157,7 +157,7 @@ where
     let emitter = LycerisEmitter::default();
 
     // Single download progress
-    {
+    /* {
         let emitter = emitter.clone();
         let emit_progress = emit_progress.clone();
         tokio::spawn(async move {
@@ -184,7 +184,7 @@ where
                 )
                 .await;
         });
-    }
+    } */
 
     {
         let emitter = emitter.clone();
