@@ -12,6 +12,8 @@ dist
 dist-ssr
 *.local
 src-tauri
+~\.tauri
+.tanstack
 
 # Editor directories and files
 .vscode/*
@@ -23,3 +25,5 @@ src-tauri
 *.njsproj
 *.sln
 *.sw?
+~/.tauri/myapp.key
+~/.tauri/myapp.key.pub
