@@ -14,8 +14,12 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+
 import { Progress } from '@/components/ui/progress';
 import { app } from '@tauri-apps/api';
+import type { UserSettings } from '@/@types/launcher';
+import { check } from '@tauri-apps/plugin-updater';
+import { relaunch } from '@tauri-apps/plugin-process';
 
 const teamMembers = [
   { name: 'Z4', role: 'Developer' },
@@ -34,6 +38,7 @@ export const HomePage = () => {
     userSettings,
     Logout,
     LaunchMinecraft,
+    updateUserSettings,
     progressStatus,
     progressMessage,
     progressCurrent,
@@ -62,6 +67,7 @@ export const HomePage = () => {
   const handleEaster01 = () => {
     setClickCount(clickCount + 1);
   };
+
 
   const getButtonContent = () => {
     switch (progressStatus) {
@@ -120,10 +126,10 @@ export const HomePage = () => {
                   {teamMembers.map((member) => (
                     <li
                       key={member.name}
-                      className="flex justify-between items-center w-full px-3 py-1 rounded bg-[#30303056] hover:bg-white/20 transition-colors"
+                      className="flex justify-between items-center w-full px-3 py-1 rounded bg-[#8886861e] hover:bg-white/20 transition-colors"
                     >
-                      <span className="font-medium opacity-70 text-sm xl:text-[16px]">{member.name}</span>
-                      <span className="text-xs opacity-70 xl:text-[14px]">{member.role}</span>
+                      <span className="font-medium opacity-70 text-[11px] xl:text-[12px]">{member.name}</span>
+                      <span className="text-xs opacity-70 text-[11px] xl:text-[12px]">{member.role}</span>
                     </li>
                   ))}
                 </ul>
@@ -180,13 +186,19 @@ export const HomePage = () => {
                 <span>{percent === 0 ? '0%' : ''}</span>
                 <span>{percent === 100 ? '100%' : ' '}</span>
               </div>
-
               <div className="relative w-full">
                 <Progress
                   className="[&>*]:bg-linear-to-r [&>*]:from-[#3F70DD] [&>*]:to-[#B377F3] h-1 lg:h-2 bg-[#323538] rounded"
                   value={percent}
                   max={100}
                 />
+
+                {['downloading', 'installing'].includes(progressStatus) && progressCurrent > 0 && progressTotal > 0 && (
+                  <p className="text-white text-[10px] font-medium text-center mt-2 absolute">
+                    {progressStatus === 'downloading' ? 'Downloading: ' : 'Installing: '}
+                    {progressMessage || 'Unknown'}
+                  </p>
+                )}
                 {percent > 0 && percent < 100 && (
                   <div
                     className="absolute -top-6 flex flex-col items-center"
@@ -207,13 +219,6 @@ export const HomePage = () => {
                 )}
               </div>
 
-              {['downloading', 'installing'].includes(progressStatus) && progressCurrent > 0 && progressTotal > 0 && (
-                <p className="text-white text-[10px] font-medium text-center mt-2">
-                  {progressStatus === 'downloading' ? 'Downloading: ' : 'Installing: '}
-                  {progressMessage || 'Unknown'}
-                </p>
-              )}
-
               <motion.button
                 onClick={handleButtonClick}
                 whileTap={{ scale: 0.97 }}
@@ -233,9 +238,9 @@ export const HomePage = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5 }}
-            className="flex flex-col items-center justify-center h-full text-white"
+            className="pt-6"
           >
-            <Settings onBack={() => setShowSettings(false)} />
+            <Settings onBack={() => setShowSettings(false)} userSettings={userSettings} updateUserSettings={updateUserSettings} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -243,17 +248,115 @@ export const HomePage = () => {
   );
 };
 
-function Settings({ onBack }: { onBack: () => void }) {
+function Settings({ onBack, userSettings, updateUserSettings }: { onBack: () => void, userSettings: UserSettings, updateUserSettings: (settings: Partial<UserSettings>) => void }) {
+  const [settingsPage, setSettingsPage] = useState('general');
+  const [formData, setFormData] = useState(userSettings);
+  const MIN_RAM = 1;
+  const MAX_RAM = 16;
+
+  const handleRamSliderChange = (value: number) => {
+    const clampedValue = Math.max(1, Math.min(64, value));
+    handleInputChange('allocatedRam', clampedValue);
+  };
+
+  const handleCheckForUpdates = () => {
+
+    const updater = async () => {
+      const update = await check();
+      if (update) {
+        console.log(
+          `found update ${update.version} from ${update.date} with notes ${update.body}`
+        );
+        toast.success(`found update ${update.version}`)
+        let downloaded = 0;
+        let contentLength = 0;
+        await update.downloadAndInstall((event) => {
+          switch (event.event) {
+            case 'Started':
+              contentLength = event.data.contentLength ?? 0;
+              console.log(`iniciou o download de ${event.data.contentLength ?? 0} bytes`);
+              break;
+            case 'Progress':
+              downloaded += event.data.chunkLength;
+              console.log(`downloaded ${downloaded} from ${contentLength}`);
+              break;
+            case 'Finished':
+              console.log('download finished');
+              break;
+          }
+        });
+
+        setTimeout(async () => {
+          await relaunch();
+        }, 1500)
+      } else {
+        toast.success(`You already have the latest version.`, {
+          icon: "📦"
+        })
+      }
+    }
+
+    toast.promise(
+      updater(),
+      {
+        loading: 'Checking for updates...',
+      }
+    );
+  }
+
+  const handleInputChange = (field: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleDone = () => {
+    updateUserSettings(formData)
+    onBack()
+  }
+
+  useEffect(() => {
+    setFormData(userSettings);
+  }, [userSettings]);
+
   return (
-    <div className="flex flex-col items-center gap-4">
-      <h1 className="text-2xl font-bold">⚙️ Settings</h1>
-      <motion.button
-        whileTap={{ scale: 0.95 }}
-        onClick={onBack}
-        className="bg-[#3F70DD] px-4 py-2 rounded text-white"
-      >
-        Done
-      </motion.button>
-    </div>
+    <div className="flex p-12 gap-10">
+      <div className="flex flex-col gap-4 content-center">
+        <h1 className="text-white text-[20px] mb-6">Settings</h1>
+        <p className={`text-[#ffffff96] text-[13px] pl-2 cursor-pointer hover:opacity-55 transition-opacity ${settingsPage === 'general' ? 'text-white' : ''}`} onClick={() => setSettingsPage('general')}>General</p>
+        <p className={`text-[#ffffff96] text-[13px] pl-2 cursor-pointer hover:opacity-55 transition-opacity ${settingsPage === 'minecraft' ? 'text-white' : ''}`} onClick={() => setSettingsPage('minecraft')}>Minecraft</p>
+        <p className={`text-[#ffffff96] text-[13px] pl-2 cursor-pointer hover:opacity-55 transition-opacity ${settingsPage === 'mods' ? 'text-white' : ''}`} onClick={() => setSettingsPage('mods')}>Mods</p>
+        <p className={`text-[#ffffff96] text-[13px] pl-2 cursor-pointer hover:opacity-55 transition-opacity ${settingsPage === 'soon' ? 'text-white' : ''}`} onClick={() => setSettingsPage('soon')}>Soon</p>
+        <p className={`text-[#ffffff96] text-[13px] pl-2 mt-9 cursor-pointer hover:opacity-55 transition-opacity ${settingsPage === 'about' ? 'text-white' : ''}`} onClick={() => setSettingsPage('about')}>About</p>
+        <p className={`text-[#ffffff96] text-[13px] pl-2 cursor-pointer hover:opacity-55 transition-opacity`} onClick={handleCheckForUpdates}>Check for updates</p>
+        <p onClick={handleDone} className='text-[#ffffff96] text-[13px] pl-2 cursor-pointer hover:opacity-55 transition-opacity mt-6'>Done</p>
+      </div>
+      <div className="flex flex-col">
+        <p className='text-[#ffffff96] text-[18px]'>{settingsPage.charAt(0).toUpperCase() + settingsPage.slice(1)}</p>
+
+        {settingsPage == "general" && <>
+          <p className='text-white mt-8'>Memory</p>
+          <hr className="h-[0.5px] bg-[#ffffff23] opacity-50 w-[300px] mt-2" />
+          <p className='text-[#ffffff96] text-[13px] mt-2'>{formData.allocatedRam} GB Allocated RAM</p>
+
+          <input
+            type="range"
+            min={MIN_RAM}
+            max={MAX_RAM}
+            step="0.5"
+            value={formData.allocatedRam}
+            onChange={(e) => handleRamSliderChange(parseFloat(e.target.value))}
+            className="w-full h-2 rounded-lg appearance-none cursor-pointer slider mt-2"
+            style={{
+              background: `linear-gradient(to right, #3F70DD 0%, #B377F3 ${((formData.allocatedRam - MIN_RAM) / (MAX_RAM - MIN_RAM)) * 100}%, #323538 ${((formData.allocatedRam - MIN_RAM) / (MAX_RAM - MIN_RAM)) * 100}%, #323538 100%)`
+            }}
+          />
+
+          <p className='text-white text-[10px] pt-5 font-bold'>The recommended amount of RAM is 4GB</p>
+          <hr className="h-[0.5px] bg-[#ffffff23] opacity-50 w-[300px] mt-2" />
+        </>}
+      </div>
+    </div >
   );
 }

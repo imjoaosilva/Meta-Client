@@ -32,7 +32,6 @@ export const LoginPage = () => {
 
     const updater = async () => {
       const update = await check();
-      console.log(update)
       if (update) {
         setTntExploded(true)
         console.log(
@@ -68,9 +67,7 @@ export const LoginPage = () => {
           setGlobalLoading(false);
         }, 1000);
       }
-
     }
-
     updater()
   }, [])
 

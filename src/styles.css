@@ -54,6 +54,46 @@ body {
 	-webkit-font-smoothing: antialiased;
 }
 
+.slider {
+	-webkit-appearance: none;
+	appearance: none;
+	outline: none;
+}
+
+.slider::-webkit-slider-thumb {
+	-webkit-appearance: none;
+	appearance: none;
+	width: 20px;
+	height: 20px;
+	border-radius: 50%;
+	background: white;
+	cursor: pointer;
+	border: 2px solid rgba(0, 0, 0, 0.3);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+	transition: all 0.2s ease;
+}
+
+.slider::-webkit-slider-thumb:hover {
+	background: white;
+	transform: scale(1.1);
+}
+
+.slider::-moz-range-thumb {
+	width: 20px;
+	height: 20px;
+	border-radius: 50%;
+	background: white;
+	cursor: pointer;
+	border: 2px solid rgba(0, 0, 0, 0.3);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+	transition: all 0.2s ease;
+}
+
+.slider::-moz-range-thumb:hover {
+	background: #60a5fa;
+	transform: scale(1.1);
+}
+
 @theme inline {
 	--radius-sm: calc(var(--radius) - 4px);
 	--radius-md: calc(var(--radius) - 2px);
