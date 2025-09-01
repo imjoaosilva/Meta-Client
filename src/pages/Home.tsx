@@ -1,7 +1,7 @@
 import { Backgrounds } from '@/@types/background';
 import { useLauncher } from '@/contexts/launcher';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { IoIosSettings } from 'react-icons/io';
 import { TbSeparator } from 'react-icons/tb';
@@ -15,6 +15,14 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { Progress } from '@/components/ui/progress';
+import { app } from '@tauri-apps/api';
+
+const teamMembers = [
+  { name: 'Z4Dev', role: 'Developer' },
+  { name: 'Z4', role: 'Designer' },
+  { name: 'Z4', role: 'Tester' },
+  { name: 'Z4', role: 'Support' },
+];
 
 export const HomePage = () => {
   const {
@@ -26,6 +34,12 @@ export const HomePage = () => {
     progressCurrent,
     progressTotal,
   } = useLauncher()
+
+  const [version, setVersion] = useState('');
+
+  useEffect(() => {
+    app.getVersion().then(setVersion);
+  }, []);
 
   let [clickCount, setClickCount] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
@@ -113,15 +127,37 @@ export const HomePage = () => {
             transition={{ duration: 0.5 }}
             className="pt-6"
           >
-            <div className="flex mx-7 my-12 justify-between items-center">
-              <p className="text-white font-light opacity-25">
-                Odeio a mafia
-              </p>
-              <div className="flex flex-col items-center gap-4">
+            <div className="flex mx-7 my-12 justify-between">
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="flex flex-col justify-start items-start p-6 gap-6 w-64 text-white"
+              >
+
+                <h2 className="text-lg font-bold border-b border-[white] pb-1 mb-2">
+                  Team
+                </h2>
+
+                <ul className="flex flex-col gap-2 w-full xl:gap-6">
+                  {teamMembers.map((member) => (
+                    <li
+                      key={member.name}
+                      className="flex justify-between items-center w-full px-3 py-1 rounded bg-[#30303056] hover:bg-white/20 transition-colors"
+                    >
+                      <span className="font-medium opacity-70 text-sm xl:text-[16px]">{member.name}</span>
+                      <span className="text-xs opacity-70 xl:text-[14px]">{member.role}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="text-[11px] opacity-70 xl:text-[13px]">
+                  Launcher Beta V{version || '...'} <span>📦</span>
+                </div>
+              </motion.div>
+              <div className="flex flex-col items-center gap-4 xl:gap-8">
                 <motion.img
                   onClick={handleEaster01}
                   src={clickCount < 9 ? `https://mineskin.eu/avatar/${userSettings.username}` : `https://mineskin.eu/bust/${userSettings.username}/100.png`}
-                  className="w-8 h-8 rounded-sm"
+                  className="w-8 h-8 rounded-sm xl:w-12 xl:h-12"
                 />
                 <p className="text-white text-sm font-semibold">
                   {userSettings.username}
@@ -132,7 +168,7 @@ export const HomePage = () => {
                     <IoIosSettings
                       size={20}
                       color="white"
-                      className="cursor-pointer hover:opacity-55 transition-opacity"
+                      className="cursor-pointer hover:opacity-55 transition-opacity xl:w-6 xl:h-6"
                       onClick={() => setShowSettings(true)}
                     />
                   </TooltipTrigger>
@@ -145,22 +181,22 @@ export const HomePage = () => {
                 <FaDiscord
                   size={20}
                   color="white"
-                  className="cursor-pointer hover:opacity-55 transition-opacity"
+                  className="cursor-pointer hover:opacity-55 transition-opacity xl:w-5 xl:h-5"
                 />
                 <FaTwitter
                   size={20}
                   color="white"
-                  className="cursor-pointer hover:opacity-55 transition-opacity"
+                  className="cursor-pointer hover:opacity-55 transition-opacity xl:w-5 xl:h-5"
                 />
                 <AiFillInstagram
                   size={20}
                   color="white"
-                  className="cursor-pointer hover:opacity-55 transition-opacity"
+                  className="cursor-pointer hover:opacity-55 transition-opacity xl:w-5 xl:h-5"
                 />
                 <FaGithub
                   size={20}
                   color="white"
-                  className="cursor-pointer hover:opacity-55 transition-opacity mb-4"
+                  className="cursor-pointer hover:opacity-55 transition-opacity mb-4 xl:w-5 xl:h-5"
                 />
 
                 <Tooltip>
@@ -168,7 +204,7 @@ export const HomePage = () => {
                     <CiLogout
                       size={20}
                       color="white"
-                      className="cursor-pointer hover:opacity-55 transition-opacity"
+                      className="cursor-pointer hover:opacity-55 transition-opacity xl:w-5 xl:h-5"
                       onClick={Logout}
                     />
                   </TooltipTrigger>
@@ -179,7 +215,7 @@ export const HomePage = () => {
               </div>
             </div>
 
-            <div className="mx-12 mt-14 flex items-center gap-4">
+            <div className="mx-12 mt-14 flex items-center gap-4 xl:mt-21 xl:gap-8">
               <div className="flex flex-col w-full relative">
                 <div className="flex justify-between text-white text-[11px] mb-1">
                   <p>{percent === 0 ? '0%' : ''}</p>
@@ -188,7 +224,7 @@ export const HomePage = () => {
 
                 <div className="relative w-full">
                   <Progress
-                    className="[&>*]:bg-linear-to-r [&>*]:from-[#3F70DD] [&>*]:to-[#B377F3] h-1 bg-[#323538]"
+                    className="[&>*]:bg-linear-to-r [&>*]:from-[#3F70DD] [&>*]:to-[#B377F3] h-1 bg-[#323538] xl:h-2"
                     value={percent}
                     max={100}
                   />
@@ -245,7 +281,7 @@ export const HomePage = () => {
                   'done',
                 ].includes(progressStatus)}
                 transition={{ type: 'spring', stiffness: 250 }}
-                className={`text-white font-[Poppins] cursor-pointer outline-0 bg-linear-to-r from-[#3F70DD] to-[#B377F3] rounded-sm text-[11px] w-[115px] h-[36px] flex items-center justify-center gap-1 ${['downloading', 'installing', 'launching', 'done'].includes(progressStatus) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`text-white font-[Poppins] cursor-pointer outline-0 bg-linear-to-r from-[#3F70DD] to-[#B377F3] rounded-sm text-[11px] w-[115px] h-[36px] flex items-center xl:text-[14px] xl:w-[140px] justify-center gap-1 ${['downloading', 'installing', 'launching', 'done'].includes(progressStatus) ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {getButtonContent()}
               </motion.button>

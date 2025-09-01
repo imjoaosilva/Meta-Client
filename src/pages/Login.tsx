@@ -66,7 +66,7 @@ export const LoginPage = () => {
 
         setTimeout(() => {
           setGlobalLoading(false);
-        }, 4000);
+        }, 1000);
       }
 
     }

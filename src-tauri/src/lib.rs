@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use tauri_plugin_updater::UpdaterExt;
 
 pub mod meta;
 pub mod minecraft;
