@@ -243,19 +243,19 @@ pub fn run() {
             open_microsoft_auth_modal,
             launch_modpack
         ])
-        .setup(|app| {
+/*         .setup(|app| {
           let handle = app.handle().clone();
           tauri::async_runtime::spawn(async move {
             update(handle).await.unwrap();
           });
           Ok(())
-        })
+        }) */
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
 
 
-async fn update(app: tauri::AppHandle) -> tauri_plugin_updater::Result<()> {
+/* async fn update(app: tauri::AppHandle) -> tauri_plugin_updater::Result<()> {
     if let Some(update) = app.updater()?.check().await? {
       let mut downloaded = 0;
   
@@ -277,4 +277,4 @@ async fn update(app: tauri::AppHandle) -> tauri_plugin_updater::Result<()> {
     }
   
     Ok(())
-  }
+  } */
