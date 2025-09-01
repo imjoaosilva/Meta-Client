@@ -10,8 +10,6 @@ import {
   type ReactNode,
 } from 'react';
 import { listen } from '@tauri-apps/api/event';
-import { check } from '@tauri-apps/plugin-updater';
-import { relaunch } from '@tauri-apps/plugin-process';
 
 type ProgressStatus =
   | 'launch'
@@ -121,43 +119,6 @@ export function LauncherProvider({ children }: { children: ReactNode }) {
       unlistenExited?.();
     };
   }, []);
-
-  useEffect(() => {
-
-    const updater = async () => {
-      const update = await check();
-      if (update) {
-        console.log(
-          `found update ${update.version} from ${update.date} with notes ${update.body}`
-        );
-        let downloaded = 0;
-        let contentLength = 0;
-        await update.downloadAndInstall((event) => {
-          switch (event.event) {
-            case 'Started':
-              contentLength = event.data.contentLength ?? 0;
-              console.log(`iniciou o download de ${event.data.contentLength ?? 0} bytes`);
-              break;
-            case 'Progress':
-              downloaded += event.data.chunkLength;
-              console.log(`downloaded ${downloaded} from ${contentLength}`);
-              break;
-            case 'Finished':
-              console.log('download finished');
-              break;
-          }
-        });
-
-        console.log('update installed');
-        await relaunch();
-      }
-
-    }
-
-    setTimeout(() => {
-      updater()
-    }, 2000)
-  }, [])
 
   const updateUserSettings = (settings: Partial<UserSettings>) => {
     const newSettings = { ...userSettings, ...settings };
