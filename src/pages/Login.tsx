@@ -23,7 +23,7 @@ export const LoginPage = () => {
   const authService = AuthService.getInstance();
 
   useEffect(() => {
-    if (globalLoading && userSettings.username != 'MetaPlayer') {
+    if (!globalLoading && userSettings.username != 'MetaPlayer') {
       window.location.href = '/home';
     }
   }, [globalLoading]);
