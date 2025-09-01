@@ -18,10 +18,15 @@ import { Progress } from '@/components/ui/progress';
 import { app } from '@tauri-apps/api';
 
 const teamMembers = [
-  { name: 'Z4Dev', role: 'Developer' },
-  { name: 'Z4', role: 'Designer' },
-  { name: 'Z4', role: 'Tester' },
-  { name: 'Z4', role: 'Support' },
+  { name: 'Z4', role: 'Developer' },
+  { name: 'Baques', role: 'Administrator' },
+  { name: 'Kalil', role: 'Mapper / Designer / Cutcene Maker' },
+  { name: 'Yeps', role: 'Principal Lore Maker' },
+  { name: 'Kiyo', role: 'Lore Maker' },
+  { name: 'Belbi', role: 'Skin/Lore Maker' },
+  { name: 'Yoruno', role: 'Modpack Manager' },
+  { name: 'Twi (Hells Angels)', role: 'Skin Maker' },
+  { name: 'Ark', role: 'Creative Thinker' },
 ];
 
 export const HomePage = () => {
@@ -33,19 +38,18 @@ export const HomePage = () => {
     progressMessage,
     progressCurrent,
     progressTotal,
-  } = useLauncher()
+  } = useLauncher();
 
   const [version, setVersion] = useState('');
-
-  useEffect(() => {
-    app.getVersion().then(setVersion);
-  }, []);
-
-  let [clickCount, setClickCount] = useState(0);
+  const [clickCount, setClickCount] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
   const backgroundRef = useRef(
     Backgrounds[Math.floor(Math.random() * Backgrounds.length)],
   );
+
+  useEffect(() => {
+    app.getVersion().then(setVersion);
+  }, []);
 
   const handleButtonClick = () => {
     if (progressStatus === 'launch' || progressStatus === 'done') {
@@ -56,47 +60,23 @@ export const HomePage = () => {
   };
 
   const handleEaster01 = () => {
-    setClickCount(clickCount + 1)
-  }
+    setClickCount(clickCount + 1);
+  };
 
   const getButtonContent = () => {
     switch (progressStatus) {
       case 'launch':
-        return (
-          <>
-            <FaRocket /> Launch
-          </>
-        );
+        return <><FaRocket /> Launch</>;
       case 'launching':
-        return (
-          <>
-            <FaRocket /> Launching...
-          </>
-        );
+        return <><FaRocket /> Launching...</>;
       case 'downloading':
-        return (
-          <>
-            <FaDownload /> Downloading...
-          </>
-        );
+        return <><FaDownload /> Downloading...</>;
       case 'installing':
-        return (
-          <>
-            <FaDownload /> Installing...
-          </>
-        );
+        return <><FaDownload /> Installing...</>;
       case 'done':
-        return (
-          <>
-            <FaRocket /> Launched
-          </>
-        );
+        return <><FaRocket /> Launched</>;
       default:
-        return (
-          <>
-            <FaRocket /> Launch
-          </>
-        );
+        return <><FaRocket /> Launch</>;
     }
   };
 
@@ -105,7 +85,7 @@ export const HomePage = () => {
 
   return (
     <motion.div
-      className="w-full h-screen"
+      className="w-full min-h-screen flex flex-col justify-between"
       initial={{ scale: 1 }}
       animate={{ scale: 1 }}
       whileHover={{ scale: window.location.pathname === '/' ? 1.03 : 1 }}
@@ -125,20 +105,18 @@ export const HomePage = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5 }}
-            className="pt-6"
+            className="flex flex-col flex-1 justify-between xl:justify-center xl:max-h-[calc(100vh-50px)]"
           >
-            <div className="flex mx-7 my-12 justify-between">
+            <div className="flex lg:flex-row justify-between mt-12 xl:mt-0 px-6 lg:px-12 gap-8 text-white">
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="flex flex-col justify-start items-start p-6 gap-6 w-64 text-white"
+                className="flex flex-col gap-6 w-full max-w-xs"
               >
-
-                <h2 className="text-lg font-bold border-b border-[white] pb-1 mb-2">
+                <h2 className="text-lg font-bold border-b border-white pb-1 mb-2">
                   Team
                 </h2>
-
-                <ul className="flex flex-col gap-2 w-full xl:gap-6">
+                <ul className="flex flex-col gap-2 w-full xl:gap-3">
                   {teamMembers.map((member) => (
                     <li
                       key={member.name}
@@ -153,22 +131,21 @@ export const HomePage = () => {
                   Launcher Beta V{version || '...'} <span>📦</span>
                 </div>
               </motion.div>
-              <div className="flex flex-col items-center gap-4 xl:gap-8">
+
+              <div className="flex flex-col items-center gap-4 xl:gap-6">
                 <motion.img
                   onClick={handleEaster01}
                   src={clickCount < 9 ? `https://mineskin.eu/avatar/${userSettings.username}` : `https://mineskin.eu/bust/${userSettings.username}/100.png`}
-                  className="w-8 h-8 rounded-sm xl:w-12 xl:h-12"
+                  className="w-8 h-8 xl:w-9 xl:h-9 2xl:w-12 2xl:h-12 rounded-sm"
                 />
-                <p className="text-white text-sm font-semibold">
-                  {userSettings.username}
-                </p>
+                <p className="text-white text-sm font-semibold">{userSettings.username}</p>
 
                 <Tooltip>
                   <TooltipTrigger>
                     <IoIosSettings
                       size={20}
                       color="white"
-                      className="cursor-pointer hover:opacity-55 transition-opacity xl:w-6 xl:h-6"
+                      className="cursor-pointer hover:opacity-55 transition-opacity 2xl:w-6 2xl:h-6"
                       onClick={() => setShowSettings(true)}
                     />
                   </TooltipTrigger>
@@ -178,33 +155,16 @@ export const HomePage = () => {
                 </Tooltip>
 
                 <TbSeparator size={20} color="white" />
-                <FaDiscord
-                  size={20}
-                  color="white"
-                  className="cursor-pointer hover:opacity-55 transition-opacity xl:w-5 xl:h-5"
-                />
-                <FaTwitter
-                  size={20}
-                  color="white"
-                  className="cursor-pointer hover:opacity-55 transition-opacity xl:w-5 xl:h-5"
-                />
-                <AiFillInstagram
-                  size={20}
-                  color="white"
-                  className="cursor-pointer hover:opacity-55 transition-opacity xl:w-5 xl:h-5"
-                />
-                <FaGithub
-                  size={20}
-                  color="white"
-                  className="cursor-pointer hover:opacity-55 transition-opacity mb-4 xl:w-5 xl:h-5"
-                />
-
+                <FaDiscord className="cursor-pointer hover:opacity-55 2xl:w-5 2xl:h-5" size={20} color="white" />
+                <FaTwitter className="cursor-pointer hover:opacity-55 2xl:w-5 2xl:h-5" size={20} color="white" />
+                <AiFillInstagram className="cursor-pointer hover:opacity-55 2xl:w-5 2xl:h-5" size={20} color="white" />
+                <FaGithub className="cursor-pointer hover:opacity-55 mb-4 2xl:w-5 2xl:h-5" size={20} color="white" />
                 <Tooltip>
                   <TooltipTrigger>
                     <CiLogout
                       size={20}
                       color="white"
-                      className="cursor-pointer hover:opacity-55 transition-opacity xl:w-5 xl:h-5"
+                      className="cursor-pointer hover:opacity-55 2xl:w-5 2xl:h-5"
                       onClick={Logout}
                     />
                   </TooltipTrigger>
@@ -215,73 +175,52 @@ export const HomePage = () => {
               </div>
             </div>
 
-            <div className="mx-12 mt-14 flex items-center gap-4 xl:mt-21 xl:gap-8">
-              <div className="flex flex-col w-full relative">
-                <div className="flex justify-between text-white text-[11px] mb-1">
-                  <p>{percent === 0 ? '0%' : ''}</p>
-                  <p>{percent === 100 ? '100%' : ' '}</p>
-                </div>
-
-                <div className="relative w-full">
-                  <Progress
-                    className="[&>*]:bg-linear-to-r [&>*]:from-[#3F70DD] [&>*]:to-[#B377F3] h-1 bg-[#323538] xl:h-2"
-                    value={percent}
-                    max={100}
-                  />
-                  {percent > 0 && percent < 100 && (
-                    <div
-                      className="absolute -top-5 flex flex-col items-center"
-                      style={{
-                        left: `${percent}%`,
-                        transform: 'translateX(-50%)',
-                      }}
-                    >
-                      <span className="text-white text-[8px] font-semibold">
-                        {Math.round(percent)}%
-                      </span>
-                      <motion.p
-                        className="text-[11px]"
-                        initial={{ scale: 0 }}
-                        animate={{
-                          scale: [1, 1.1, 1],
-                          rotate: [0, 15, -15, 0],
-                          opacity: 1,
-                        }}
-                        transition={{
-                          duration: 1.5,
-                          repeat: Infinity,
-                          repeatType: 'mirror',
-                        }}
-                      >
-                        🎉
-                      </motion.p>
-                    </div>
-                  )}
-                </div>
-
-                {['downloading', 'installing'].includes(progressStatus) &&
-                  progressCurrent > 0 &&
-                  progressTotal > 0 && (
-                    <p className="text-white text-[10px] font-medium text-center mt-3">
-                      {progressStatus === 'downloading'
-                        ? 'Downloading: '
-                        : 'Installing: '}{' '}
-                      {progressMessage || 'Unknown'}
-                    </p>
-                  )}
+            <div className="px-6 lg:px-12 mt-3 flex gap-3 mb-6 items-center xl:absolute bottom-0 w-full">
+              <div className="flex justify-between text-white text-xs">
+                <span>{percent === 0 ? '0%' : ''}</span>
+                <span>{percent === 100 ? '100%' : ' '}</span>
               </div>
+
+              <div className="relative w-full">
+                <Progress
+                  className="[&>*]:bg-linear-to-r [&>*]:from-[#3F70DD] [&>*]:to-[#B377F3] h-1 lg:h-2 bg-[#323538] rounded"
+                  value={percent}
+                  max={100}
+                />
+                {percent > 0 && percent < 100 && (
+                  <div
+                    className="absolute -top-6 flex flex-col items-center"
+                    style={{ left: `${percent}%`, transform: 'translateX(-50%)' }}
+                  >
+                    <span className="text-white text-[10px] font-semibold">
+                      {Math.round(percent)}%
+                    </span>
+                    <motion.p
+                      className="text-[12px]"
+                      initial={{ scale: 0 }}
+                      animate={{ scale: [1, 1.1, 1], rotate: [0, 15, -15, 0], opacity: 1 }}
+                      transition={{ duration: 1.5, repeat: Infinity, repeatType: 'mirror' }}
+                    >
+                      🎉
+                    </motion.p>
+                  </div>
+                )}
+              </div>
+
+              {['downloading', 'installing'].includes(progressStatus) && progressCurrent > 0 && progressTotal > 0 && (
+                <p className="text-white text-[10px] font-medium text-center mt-2">
+                  {progressStatus === 'downloading' ? 'Downloading: ' : 'Installing: '}
+                  {progressMessage || 'Unknown'}
+                </p>
+              )}
 
               <motion.button
                 onClick={handleButtonClick}
                 whileTap={{ scale: 0.97 }}
-                disabled={[
-                  'downloading',
-                  'installing',
-                  'launching',
-                  'done',
-                ].includes(progressStatus)}
+                disabled={['downloading', 'installing', 'launching', 'done'].includes(progressStatus)}
                 transition={{ type: 'spring', stiffness: 250 }}
-                className={`text-white font-[Poppins] cursor-pointer outline-0 bg-linear-to-r from-[#3F70DD] to-[#B377F3] rounded-sm text-[11px] w-[115px] h-[36px] flex items-center xl:text-[14px] xl:w-[140px] justify-center gap-1 ${['downloading', 'installing', 'launching', 'done'].includes(progressStatus) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`text-white font-[Poppins] cursor-pointer outline-0 bg-linear-to-r from-[#3F70DD] to-[#B377F3] rounded-sm text-[11px] w-[115px] h-[36px] flex items-center xl:text-[14px] xl:w-[140px] justify-center gap-1 ${['downloading', 'installing', 'launching', 'done'].includes(progressStatus) ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
               >
                 {getButtonContent()}
               </motion.button>
