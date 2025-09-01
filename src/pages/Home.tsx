@@ -115,7 +115,7 @@ export const HomePage = () => {
           >
             <div className="flex mx-7 my-12 justify-between items-center">
               <p className="text-white font-light opacity-25">
-                Preguiça {'>-<'}
+                Odeio a mafia
               </p>
               <div className="flex flex-col items-center gap-4">
                 <motion.img
