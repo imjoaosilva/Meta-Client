@@ -2,16 +2,11 @@ import type { MicrosoftAccount, UserSettings } from '@/@types/launcher';
 import AuthService from '@/services/auth';
 import { LauncherService } from '@/services/launcher';
 import { invoke } from '@tauri-apps/api/core';
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  type ReactNode,
-} from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { listen } from '@tauri-apps/api/event';
 
 type ProgressStatus =
+  | 'modpack_update'
   | 'launch'
   | 'launching'
   | 'downloading'
@@ -30,29 +25,33 @@ interface LauncherContextType {
   progressCurrent: number;
   progressTotal: number;
   globalLoading: boolean;
+  checkModpackUpdate: () => Promise<boolean>;
   setGlobalLoading: (value: boolean) => void;
+  updateModpack: () => void;
 }
 
-const LauncherContext = createContext<LauncherContextType | undefined>(
-  undefined,
-);
+const LauncherContext = createContext<LauncherContextType | undefined>(undefined);
 
 export function LauncherProvider({ children }: { children: ReactNode }) {
   const launcherService = LauncherService.getInstance();
-  const [userSettings, setUserSettings] = useState<UserSettings>(
-    {} as UserSettings,
-  );
+
+  const [userSettings, setUserSettings] = useState<UserSettings>({} as UserSettings);
   const [progressValue, setProgressValue] = useState(0);
   const [progressMessage, setProgressMessage] = useState('');
   const [progressCurrent, setProgressCurrent] = useState(0);
   const [progressTotal, setProgressTotal] = useState(0);
-  const [progressStatus, setProgressStatus] =
-    useState<ProgressStatus>('launch');
+  const [progressStatus, setProgressStatus] = useState<ProgressStatus>('modpack_update');
   const [globalLoading, setGlobalLoading] = useState(true);
 
   useEffect(() => {
-    const settings = launcherService.getUserSettings();
-    setUserSettings(settings);
+    const init = async () => {
+      const settings = launcherService.getUserSettings();
+      setUserSettings(settings);
+
+      const needsUpdate = await checkModpackUpdate();
+      if (!needsUpdate) setProgressStatus('launch');
+    };
+    void init();
   }, []);
 
   useEffect(() => {
@@ -64,34 +63,33 @@ export function LauncherProvider({ children }: { children: ReactNode }) {
         current: number;
         total: number;
       }>('minecraft-progress', (event) => {
-        const { message, percentage, current, total, component } =
-          event.payload;
+        const { message, percentage, current, total, component } = event.payload;
 
         setProgressMessage(message);
         setProgressCurrent(current);
         setProgressTotal(total);
 
-        if (total > 0) {
-          setProgressValue(Math.round((current / total) * 100));
-        } else if (percentage >= 0) {
-          setProgressValue(Math.round(percentage));
-        } else {
-          setProgressValue(0);
+        if (total > 0) setProgressValue(Math.round((current / total) * 100));
+        else if (percentage >= 0) setProgressValue(Math.round(percentage));
+        else setProgressValue(0);
+
+        switch (component) {
+          case 'launch':
+            setProgressStatus('launch');
+            break;
+          case 'done':
+            setProgressStatus('done');
+            break;
+          default:
+            if (component.includes('downloading')) setProgressStatus('downloading');
+            else if (component.includes('installing')) setProgressStatus('installing');
+            break;
         }
-
-        if (component.includes('downloading')) setProgressStatus('downloading');
-        else if (component.includes('installing'))
-          setProgressStatus('installing');
-        else if (component.includes('launching') || progressStatus === 'launch')
-          setProgressStatus('launching');
-        else if (component.includes('done')) setProgressStatus('done');
       });
-
       return unlisten;
     };
-
-    setupProgressListener();
-  }, [progressStatus]);
+    void setupProgressListener();
+  }, []);
 
   useEffect(() => {
     let unlistenStarted: (() => void) | undefined;
@@ -112,7 +110,7 @@ export function LauncherProvider({ children }: { children: ReactNode }) {
       });
     };
 
-    setupMinecraftListeners();
+    void setupMinecraftListeners();
 
     return () => {
       unlistenStarted?.();
@@ -120,37 +118,8 @@ export function LauncherProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const updateUserSettings = (settings: Partial<UserSettings>) => {
-    const newSettings = { ...userSettings, ...settings };
-    launcherService.saveUserSettings(newSettings);
-    setUserSettings(newSettings);
-  };
-
-  const Logout = () => {
-    localStorage.removeItem('MetaLauncher_settings');
-    window.location.href = '/';
-  };
-
-  const LaunchMinecraft = async () => {
-    const transformedSettings = transformUserSettingsForBackend(userSettings);
-    setProgressStatus('launching');
-    await invoke('launch_modpack', { settings: transformedSettings });
-  };
-
-  const transformUserSettingsForBackend = (settings: UserSettings) => ({
-    username: settings.username,
-    allocatedRam: settings.allocatedRam,
-    authMethod: settings.authMethod,
-    microsoftAccount: settings.microsoftAccount || null,
-    clientToken: settings.clientToken || null,
-  });
-
   useEffect(() => {
-    if (
-      userSettings.authMethod !== 'microsoft' ||
-      !userSettings.microsoftAccount
-    )
-      return;
+    if (userSettings.authMethod !== 'microsoft' || !userSettings.microsoftAccount) return;
 
     const authService = AuthService.getInstance();
 
@@ -178,26 +147,20 @@ export function LauncherProvider({ children }: { children: ReactNode }) {
 
     if (secsUntilRefresh === 0) void doRefresh();
 
-    const timeoutId = setTimeout(
-      () => void doRefresh(),
-      secsUntilRefresh * 1000,
-    );
+    const timeoutId = setTimeout(() => void doRefresh(), secsUntilRefresh * 1000);
     return () => clearTimeout(timeoutId);
   }, [userSettings.authMethod, userSettings.microsoftAccount?.exp]);
 
   useEffect(() => {
     const setupTokenRefreshListener = async () => {
-      const unlisten = await listen<MicrosoftAccount>(
-        'microsoft-token-refreshed',
-        (event) => {
-          const refreshedAccount = event.payload;
-          updateUserSettings({
-            authMethod: 'microsoft',
-            microsoftAccount: refreshedAccount,
-            username: refreshedAccount.username,
-          });
-        },
-      );
+      const unlisten = await listen<MicrosoftAccount>('microsoft-token-refreshed', (event) => {
+        const refreshedAccount = event.payload;
+        updateUserSettings({
+          authMethod: 'microsoft',
+          microsoftAccount: refreshedAccount,
+          username: refreshedAccount.username,
+        });
+      });
       return unlisten;
     };
     const cleanupPromise = setupTokenRefreshListener();
@@ -205,6 +168,39 @@ export function LauncherProvider({ children }: { children: ReactNode }) {
       cleanupPromise.then((cleanup) => cleanup?.());
     };
   }, []);
+
+  const updateUserSettings = (settings: Partial<UserSettings>) => {
+    const newSettings = { ...userSettings, ...settings };
+    launcherService.saveUserSettings(newSettings);
+    setUserSettings(newSettings);
+  };
+
+  const checkModpackUpdate = async (): Promise<boolean> => {
+    return await invoke('check_manifest_update');
+  };
+
+  const updateModpack = async () => {
+    await invoke('update_modpack');
+  };
+
+  const Logout = () => {
+    updateUserSettings({ username: 'MetaPlayer' });
+    window.location.href = '/';
+  };
+
+  const LaunchMinecraft = async () => {
+    const transformedSettings = transformUserSettingsForBackend(userSettings);
+    setProgressStatus('launching');
+    await invoke('launch_modpack', { settings: transformedSettings });
+  };
+
+  const transformUserSettingsForBackend = (settings: UserSettings) => ({
+    username: settings.username,
+    allocatedRam: settings.allocatedRam,
+    authMethod: settings.authMethod,
+    microsoftAccount: settings.microsoftAccount || null,
+    clientToken: settings.clientToken || null,
+  });
 
   return (
     <LauncherContext.Provider
@@ -220,6 +216,8 @@ export function LauncherProvider({ children }: { children: ReactNode }) {
         progressTotal,
         globalLoading,
         setGlobalLoading,
+        checkModpackUpdate,
+        updateModpack,
       }}
     >
       {children}
@@ -229,7 +227,6 @@ export function LauncherProvider({ children }: { children: ReactNode }) {
 
 export function useLauncher() {
   const context = useContext(LauncherContext);
-  if (!context)
-    throw new Error('useLauncher must be used within a LauncherProvider');
+  if (!context) throw new Error('useLauncher must be used within a LauncherProvider');
   return context;
 }

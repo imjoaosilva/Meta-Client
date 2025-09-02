@@ -9,6 +9,7 @@ import { FaDiscord, FaTwitter, FaDownload, FaRocket } from 'react-icons/fa';
 import { AiFillInstagram } from 'react-icons/ai';
 import { FaGithub } from 'react-icons/fa';
 import { CiLogout } from 'react-icons/ci';
+import { MdUpdate } from "react-icons/md";
 import {
   Tooltip,
   TooltipContent,
@@ -43,6 +44,7 @@ export const HomePage = () => {
     progressMessage,
     progressCurrent,
     progressTotal,
+    updateModpack
   } = useLauncher();
 
   const [version, setVersion] = useState('');
@@ -57,7 +59,11 @@ export const HomePage = () => {
   }, []);
 
   const handleButtonClick = () => {
-    if (progressStatus === 'launch' || progressStatus === 'done') {
+
+    if (progressStatus === 'modpack_update') {
+      updateModpack()
+    }
+    else if (progressStatus === 'launch' || progressStatus === 'done') {
       LaunchMinecraft();
     } else {
       toast('Operation in progress!', { position: 'top-center' });
@@ -73,6 +79,8 @@ export const HomePage = () => {
     switch (progressStatus) {
       case 'launch':
         return <><FaRocket /> Launch</>;
+      case 'modpack_update':
+        return <><MdUpdate size={17} /> Modpack</>;
       case 'launching':
         return <><FaRocket /> Launching...</>;
       case 'downloading':
@@ -195,7 +203,7 @@ export const HomePage = () => {
 
                 {['downloading', 'installing'].includes(progressStatus) && progressCurrent > 0 && progressTotal > 0 && (
                   <p className="text-white text-[10px] font-medium text-center mt-2 absolute">
-                    {progressStatus === 'downloading' ? 'Downloading: ' : 'Installing: '}
+                    {progressStatus === 'downloading' ? '' : 'Installing: '}
                     {progressMessage || 'Unknown'}
                   </p>
                 )}

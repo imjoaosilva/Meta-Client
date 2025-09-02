@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 pub mod meta;
 pub mod minecraft;
+pub mod modpack;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UserSettings {
@@ -39,8 +40,23 @@ async fn create_microsoft_auth_link() -> Result<String, String> {
 }
 
 #[tauri::command]
+async fn check_manifest_update() -> Result<bool, bool> {
+    match modpack::modpack_required_update().await {
+        Ok(v) => Ok(v),
+        Err(_) => Err(false)
+    }
+}
+
+#[tauri::command]
+async fn update_modpack(app: tauri::AppHandle) -> Result<(), String> {
+    match crate::modpack::download_modpack(app.clone()).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(format!("Failed to launch modpack: {}", e)),
+    }
+}
+
+#[tauri::command]
 async fn launch_modpack(app: tauri::AppHandle, settings: UserSettings) -> Result<(), String> {
-    // Lança Minecraft
     match crate::minecraft::launch_minecraft_with_forge(settings, app.clone()).await {
         Ok(_) => Ok(()),
         Err(e) => Err(format!("Failed to launch modpack: {}", e)),
@@ -240,7 +256,9 @@ pub fn run() {
             open_microsoft_auth_and_get_url,
             extract_code_from_redirect_url,
             open_microsoft_auth_modal,
-            launch_modpack
+            launch_modpack,
+            check_manifest_update,
+            update_modpack
         ])
 /*         .setup(|app| {
           let handle = app.handle().clone();
