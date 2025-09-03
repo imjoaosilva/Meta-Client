@@ -10,12 +10,14 @@ import { AiFillInstagram } from 'react-icons/ai';
 import { FaGithub } from 'react-icons/fa';
 import { CiLogout } from 'react-icons/ci';
 import { MdUpdate } from "react-icons/md";
+import { FaFolder } from "react-icons/fa";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-
+import { open, } from '@tauri-apps/plugin-dialog';
+import { Switch } from "@/components/ui/switch"
 import { Progress } from '@/components/ui/progress';
 import { app } from '@tauri-apps/api';
 import type { UserSettings } from '@/@types/launcher';
@@ -44,7 +46,10 @@ export const HomePage = () => {
     progressMessage,
     progressCurrent,
     progressTotal,
-    updateModpack
+    updateModpack,
+    rootPath,
+    updateRootPath,
+    logs
   } = useLauncher();
 
   const [version, setVersion] = useState('');
@@ -73,7 +78,6 @@ export const HomePage = () => {
   const handleEaster01 = () => {
     setClickCount(clickCount + 1);
   };
-
 
   const getButtonContent = () => {
     switch (progressStatus) {
@@ -145,7 +149,9 @@ export const HomePage = () => {
                   Launcher Beta V{version || '...'} <span>📦</span>
                 </div>
               </motion.div>
-
+              {userSettings.developer_mode && logs.length > 0 && <>
+                <Terminal logs={logs} />
+              </>}
               <div className="flex flex-col items-center gap-4 xl:gap-6">
                 <motion.img
                   onClick={handleEaster01}
@@ -248,7 +254,13 @@ export const HomePage = () => {
             transition={{ duration: 0.5 }}
             className="pt-6"
           >
-            <Settings onBack={() => setShowSettings(false)} userSettings={userSettings} updateUserSettings={updateUserSettings} />
+            <Settings
+              onBack={() => setShowSettings(false)}
+              userSettings={userSettings}
+              updateUserSettings={updateUserSettings}
+              root_dir={rootPath}
+              updateRootPath={updateRootPath}
+            />
           </motion.div>
         )}
       </AnimatePresence>
@@ -256,7 +268,7 @@ export const HomePage = () => {
   );
 };
 
-function Settings({ onBack, userSettings, updateUserSettings }: { onBack: () => void, userSettings: UserSettings, updateUserSettings: (settings: Partial<UserSettings>) => void }) {
+function Settings({ onBack, userSettings, updateUserSettings, root_dir, updateRootPath }: { onBack: () => void, userSettings: UserSettings, updateUserSettings: (settings: Partial<UserSettings>) => void, root_dir: string, updateRootPath: (path: string) => void }) {
   const [settingsPage, setSettingsPage] = useState('general');
   const [formData, setFormData] = useState(userSettings);
   const MIN_RAM = 1;
@@ -266,6 +278,17 @@ function Settings({ onBack, userSettings, updateUserSettings }: { onBack: () => 
     const clampedValue = Math.max(1, Math.min(64, value));
     handleInputChange('allocatedRam', clampedValue);
   };
+
+  const handleSelectFolder = async () => {
+    open({
+      multiple: false,
+      directory: true,
+      defaultPath: root_dir
+    }).then(r => {
+      if (r) updateRootPath(r)
+
+    }).catch(e => console.log(e))
+  }
 
   const handleCheckForUpdates = () => {
 
@@ -335,14 +358,12 @@ function Settings({ onBack, userSettings, updateUserSettings }: { onBack: () => 
         <p className={`text-[#ffffff96] text-[13px] pl-2 cursor-pointer hover:opacity-55 transition-opacity ${settingsPage === 'general' ? 'text-white' : ''}`} onClick={() => setSettingsPage('general')}>General</p>
         <p className={`text-[#ffffff96] text-[13px] pl-2 cursor-pointer hover:opacity-55 transition-opacity ${settingsPage === 'minecraft' ? 'text-white' : ''}`} onClick={() => setSettingsPage('minecraft')}>Minecraft</p>
         <p className={`text-[#ffffff96] text-[13px] pl-2 cursor-pointer hover:opacity-55 transition-opacity ${settingsPage === 'mods' ? 'text-white' : ''}`} onClick={() => setSettingsPage('mods')}>Mods</p>
-        <p className={`text-[#ffffff96] text-[13px] pl-2 cursor-pointer hover:opacity-55 transition-opacity ${settingsPage === 'soon' ? 'text-white' : ''}`} onClick={() => setSettingsPage('soon')}>Soon</p>
         <p className={`text-[#ffffff96] text-[13px] pl-2 mt-9 cursor-pointer hover:opacity-55 transition-opacity ${settingsPage === 'about' ? 'text-white' : ''}`} onClick={() => setSettingsPage('about')}>About</p>
         <p className={`text-[#ffffff96] text-[13px] pl-2 cursor-pointer hover:opacity-55 transition-opacity`} onClick={handleCheckForUpdates}>Check for updates</p>
         <p onClick={handleDone} className='text-[#ffffff96] text-[13px] pl-2 cursor-pointer hover:opacity-55 transition-opacity mt-6'>Done</p>
       </div>
       <div className="flex flex-col">
         <p className='text-[#ffffff96] text-[18px]'>{settingsPage.charAt(0).toUpperCase() + settingsPage.slice(1)}</p>
-
         {settingsPage == "general" && <>
           <p className='text-white mt-8'>Memory</p>
           <hr className="h-[0.5px] bg-[#ffffff23] opacity-50 w-[300px] mt-2" />
@@ -363,8 +384,59 @@ function Settings({ onBack, userSettings, updateUserSettings }: { onBack: () => 
 
           <p className='text-white text-[10px] pt-5 font-bold'>The recommended amount of RAM is 4GB</p>
           <hr className="h-[0.5px] bg-[#ffffff23] opacity-50 w-[300px] mt-2" />
+
+          <p className='text-white mt-8'>Launcher</p>
+          <hr className="h-[0.5px] bg-[#ffffff23] opacity-50 w-[300px] mt-2" />
+          <p className='text-[#ffffff96] text-[13px] mt-2 mb-2'>Meta Launcher Path</p>
+          <div className="flex items-center justify-between bg-[#1e1f2e18] border border-[#f1f1f107] rounded-2xl px-3 py-2 shadow-sm gap-2">
+            <div className="flex items-center gap-2">
+              <FaFolder className="text-yellow-400" size={18} />
+              <p className="text-white text-xs truncate max-w-[130px]">
+                {root_dir}
+              </p>
+            </div>
+            <button
+              className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 
+             text-white font-medium rounded-lg text-xs px-4 py-2 shadow-md 
+             transition-all duration-200 ease-in-out active:scale-95 cursor-pointer"
+              onClick={() => handleSelectFolder()}
+            >
+              Select Folder
+            </button>
+          </div>
+          <div className='mt-4 flex items-center gap-2'>
+            <Switch
+              className="data-[state=checked]:bg-[#a2d9fd] data-[state=unchecked]:bg-[#3f3f3f49]"
+              checked={formData.developer_mode}
+              onCheckedChange={(event) => handleInputChange("developer_mode", event)}
+            />
+            <p className='text-white text-[12px]'>Developer Mode</p>
+          </div>
         </>}
       </div>
     </div >
+  );
+}
+
+interface TerminalProps {
+  logs: string[];
+}
+
+export default function Terminal({ logs }: TerminalProps) {
+  const endRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [logs]);
+
+  return (
+    <div className="bg-black mt-8 text-white max-w-130 font-mono text-sm p-2 rounded-lg h-[320px] overflow-y-auto shadow-inner">
+      {logs.map((line, i) => (
+        <div key={i} className="whitespace-pre-wrap">
+          {line}
+        </div>
+      ))}
+      <div ref={endRef} />
+    </div>
   );
 }

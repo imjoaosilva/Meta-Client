@@ -28,6 +28,9 @@ interface LauncherContextType {
   checkModpackUpdate: () => Promise<boolean>;
   setGlobalLoading: (value: boolean) => void;
   updateModpack: () => void;
+  rootPath: string;
+  updateRootPath: (path: string) => void;
+  logs: string[]
 }
 
 const LauncherContext = createContext<LauncherContextType | undefined>(undefined);
@@ -42,12 +45,16 @@ export function LauncherProvider({ children }: { children: ReactNode }) {
   const [progressTotal, setProgressTotal] = useState(0);
   const [progressStatus, setProgressStatus] = useState<ProgressStatus>('modpack_update');
   const [globalLoading, setGlobalLoading] = useState(true);
+  const [rootPath, setRootPath] = useState<string>('');
+  const [logs, setLogs] = useState<string[]>([]);
 
   useEffect(() => {
     const init = async () => {
       const settings = launcherService.getUserSettings();
       setUserSettings(settings);
 
+      const path = await invoke('get_root_dir');
+      setRootPath(path as string)
       const needsUpdate = await checkModpackUpdate();
       if (!needsUpdate) setProgressStatus('launch');
     };
@@ -89,6 +96,19 @@ export function LauncherProvider({ children }: { children: ReactNode }) {
       return unlisten;
     };
     void setupProgressListener();
+  }, []);
+
+  useEffect(() => {
+    const setupLogsListener = async () => {
+      const unlisten = await listen<string>('logs', (event) => {
+        setLogs((prev) => [...prev, event.payload]);
+      });
+      return unlisten;
+    };
+    const cleanupPromise = setupLogsListener();
+    return () => {
+      cleanupPromise.then((cleanup) => cleanup?.());
+    };
   }, []);
 
   useEffect(() => {
@@ -175,6 +195,16 @@ export function LauncherProvider({ children }: { children: ReactNode }) {
     setUserSettings(newSettings);
   };
 
+  const updateRootPath = async (path: string) => {
+    await invoke('set_root_dir', {
+      path
+    });
+    setRootPath(path)
+
+    const needsUpdate = await checkModpackUpdate();
+    if (needsUpdate) setProgressStatus('modpack_update');
+  }
+
   const checkModpackUpdate = async (): Promise<boolean> => {
     return await invoke('check_manifest_update');
   };
@@ -218,6 +248,9 @@ export function LauncherProvider({ children }: { children: ReactNode }) {
         setGlobalLoading,
         checkModpackUpdate,
         updateModpack,
+        rootPath,
+        updateRootPath,
+        logs
       }}
     >
       {children}

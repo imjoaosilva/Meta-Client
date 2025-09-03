@@ -1,15 +1,15 @@
 use crate::meta::MetaDirectories;
 use reqwest::Client;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
+use sha1::{Digest, Sha1};
 use std::fs;
-use sha1::{Sha1, Digest};
 use tauri::AppHandle;
 use tauri::Emitter;
 
 #[derive(Deserialize, Serialize)]
 struct Manifest {
     version: String,
-    files: Vec<FileEntry>
+    files: Vec<FileEntry>,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -17,7 +17,7 @@ struct FileEntry {
     path: String,
     sha1: String,
     size: u64,
-    url: String
+    url: String,
 }
 
 pub async fn modpack_required_update() -> anyhow::Result<bool> {
@@ -40,7 +40,7 @@ pub async fn modpack_required_update() -> anyhow::Result<bool> {
         let local: Manifest = serde_json::from_slice(&local_file)?;
 
         Ok(local.version != remote.version)
-    }   
+    }
 }
 
 pub async fn download_modpack(app: AppHandle) -> anyhow::Result<()> {
@@ -82,7 +82,13 @@ pub async fn download_modpack(app: AppHandle) -> anyhow::Result<()> {
         }
     };
 
-    emit_progress("Preparing modpack update...", 0.0, "installing", 0, total_files);
+    emit_progress(
+        "Preparing modpack update...",
+        0.0,
+        "installing",
+        0,
+        total_files,
+    );
 
     if let Some(local) = &local {
         for old_file in &local.files {
@@ -150,7 +156,13 @@ pub async fn download_modpack(app: AppHandle) -> anyhow::Result<()> {
         );
     }
 
-    emit_progress("Download complete", 100.0, "launch", total_files, total_files);
+    emit_progress(
+        "Download complete",
+        100.0,
+        "launch",
+        total_files,
+        total_files,
+    );
 
     fs::write(&manifest_path, serde_json::to_vec_pretty(&remote)?)?;
 

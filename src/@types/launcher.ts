@@ -14,4 +14,5 @@ export interface UserSettings {
 	authMethod: 'offline' | 'microsoft';
 	microsoftAccount?: MicrosoftAccount;
 	clientToken?: string;
+	developer_mode: boolean
 }

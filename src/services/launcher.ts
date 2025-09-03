@@ -33,6 +33,7 @@ export class LauncherService {
 			allocatedRam: 4,
 			authMethod: 'offline',
 			clientToken: undefined,
+			developer_mode: false
 		};
 
 		try {
@@ -58,7 +59,7 @@ export class LauncherService {
 				'MetaLauncher_settings',
 				JSON.stringify(defaultSettings),
 			);
-		} catch {}
+		} catch { }
 		return defaultSettings;
 	}
 

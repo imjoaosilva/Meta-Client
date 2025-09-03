@@ -1,4 +1,6 @@
 use serde::{Deserialize, Serialize};
+use crate::meta::MetaDirectories;
+use std::path::PathBuf;
 
 pub mod meta;
 pub mod minecraft;
@@ -32,6 +34,22 @@ pub struct MicrosoftAccount {
 }
 
 #[tauri::command]
+async fn get_root_dir() -> Result<PathBuf, String> {
+    let meta_dirs = MetaDirectories::new().map_err(|e| e.to_string())?;
+    meta_dirs.ensure().map_err(|e| e.to_string())?;
+
+    Ok(meta_dirs.get_root_dir().to_path_buf())
+}
+
+#[tauri::command]
+async fn set_root_dir(path: String) -> Result<(), String>{
+    let mut meta_dirs = MetaDirectories::new().map_err(|e| e.to_string())?;
+    meta_dirs.set_root_dir(path.into());
+    Ok(())
+}
+
+
+#[tauri::command]
 async fn create_microsoft_auth_link() -> Result<String, String> {
     match lyceris::auth::microsoft::create_link() {
         Ok(url) => Ok(url),
@@ -43,7 +61,7 @@ async fn create_microsoft_auth_link() -> Result<String, String> {
 async fn check_manifest_update() -> Result<bool, bool> {
     match modpack::modpack_required_update().await {
         Ok(v) => Ok(v),
-        Err(_) => Err(false)
+        Err(_) => Err(false),
     }
 }
 
@@ -246,6 +264,7 @@ async fn open_microsoft_auth_modal(app: tauri::AppHandle) -> Result<String, Stri
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
@@ -258,40 +277,10 @@ pub fn run() {
             open_microsoft_auth_modal,
             launch_modpack,
             check_manifest_update,
-            update_modpack
+            update_modpack,
+            get_root_dir,
+            set_root_dir
         ])
-/*         .setup(|app| {
-          let handle = app.handle().clone();
-          tauri::async_runtime::spawn(async move {
-            update(handle).await.unwrap();
-          });
-          Ok(())
-        }) */
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
-
-
-/* async fn update(app: tauri::AppHandle) -> tauri_plugin_updater::Result<()> {
-    if let Some(update) = app.updater()?.check().await? {
-      let mut downloaded = 0;
-  
-      // alternatively we could also call update.download() and update.install() separately
-      update
-        .download_and_install(
-          |chunk_length, content_length| {
-            downloaded += chunk_length;
-            println!("downloaded {downloaded} from {content_length:?}");
-          },
-          || {
-            println!("download finished");
-          },
-        )
-        .await?;
-  
-      println!("update installed");
-      app.restart();
-    }
-  
-    Ok(())
-  } */

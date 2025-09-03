@@ -45,7 +45,7 @@ pub async fn launch_minecraft_with_forge(settings: UserSettings, app: AppHandle)
         }
     };
 
-    let emitter = create_emitter_with_progress(emit_progress);
+    let emitter = create_emitter_with_progress(emit_progress, app.clone());
 
     {
         let app_clone = app.clone();
@@ -149,42 +149,12 @@ async fn get_auth_method_with_validation(
     }
 }
 
-pub fn create_emitter_with_progress<F>(emit_progress: F) -> LycerisEmitter
+pub fn create_emitter_with_progress<F>(emit_progress: F, app: AppHandle) -> LycerisEmitter
 where
     // Aqui adicionamos current e total como parâmetros do callback
     F: Fn(String, f32, String, u64, u64) + Send + Sync + 'static + Clone,
 {
     let emitter = LycerisEmitter::default();
-
-    // Single download progress
-    /* {
-        let emitter = emitter.clone();
-        let emit_progress = emit_progress.clone();
-        tokio::spawn(async move {
-            emitter
-                .on(
-                    Event::SingleDownloadProgress,
-                    move |(path, current, total): (String, u64, u64)| {
-                        let file_name = std::path::Path::new(&path)
-                            .file_name()
-                            .and_then(|n| n.to_str())
-                            .unwrap_or(&path);
-
-                        // Chamamos o callback passando current e total
-                        /*                   emit_progress(
-                            format!("Downloading {}", file_name),
-                            -1.0, // -1 indica que não atualiza o percentual geral
-                            "downloading_minecraft_file".to_string(),
-                            current,
-                            total,
-                        ); */
-
-                        /* println!("Downloading {} - {}/{}", file_name, current, total); */
-                    },
-                )
-                .await;
-        });
-    } */
 
     {
         let emitter = emitter.clone();
@@ -221,25 +191,16 @@ where
     // Console
     {
         let emitter = emitter.clone();
-        let emit_progress = emit_progress.clone();
+        let app = app.clone();
         tokio::spawn(async move {
             emitter
                 .on(Event::Console, move |line: String| {
                     println!("Minecraft: {}", line);
-                    if line.contains("Installing") {
-                        emit_progress(
-                            format!("Installing: {}", line),
-                            -1.0,
-                            "installing_component".to_string(),
-                            0,
-                            0,
-                        );
-                    }
+                    let _ = app.emit("logs", line);
                 })
                 .await;
         });
     }
-
     emitter
 }
 
