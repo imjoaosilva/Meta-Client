@@ -14,5 +14,11 @@ export interface UserSettings {
 	authMethod: 'offline' | 'microsoft';
 	microsoftAccount?: MicrosoftAccount;
 	clientToken?: string;
-	developer_mode: boolean
+	developer_mode: boolean;
+	launcher_logs: boolean
+}
+
+export interface Logs {
+	type: 'launcher' | 'minecraft',
+	message: string
 }

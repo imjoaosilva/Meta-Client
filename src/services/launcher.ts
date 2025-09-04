@@ -33,7 +33,8 @@ export class LauncherService {
 			allocatedRam: 4,
 			authMethod: 'offline',
 			clientToken: undefined,
-			developer_mode: false
+			developer_mode: false,
+			launcher_logs: false
 		};
 
 		try {

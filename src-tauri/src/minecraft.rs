@@ -28,6 +28,10 @@ pub async fn launch_minecraft_with_forge(settings: UserSettings, app: AppHandle)
     meta_dirs.ensure()?;
 
     let instance_dir = meta_dirs.default_instance.clone();
+    let _ = app.emit("logs", serde_json::json!({
+        "type": "launcher",
+        "message": format!("[Launcher:Rust] Launch Minecraft found instance {}", instance_dir.display()),
+    }));
 
     let emit_progress = {
         let app = app.clone();
@@ -40,6 +44,7 @@ pub async fn launch_minecraft_with_forge(settings: UserSettings, app: AppHandle)
                     "component": component,
                     "current": current,
                     "total": total,
+                    "type": "launcher"
                 }),
             );
         }
@@ -47,47 +52,82 @@ pub async fn launch_minecraft_with_forge(settings: UserSettings, app: AppHandle)
 
     let emitter = create_emitter_with_progress(emit_progress, app.clone());
 
-    {
-        let app_clone = app.clone();
-        let emitter_clone = emitter.clone();
-        tokio::spawn(async move {
-            emitter_clone
-                .on(Event::Console, move |line: String| {
-                    let _ = app_clone.emit("minecraft-log", line);
-                })
-                .await;
-        });
-    }
-
     let (auth_method, refreshed_account) = get_auth_method_with_validation(&settings).await?;
     if let Some(refreshed_account) = refreshed_account {
-        let _ = app.emit(
-            "microsoft-token-refreshed",
-            serde_json::json!({
-                "xuid": refreshed_account.xuid,
-                "exp": refreshed_account.exp,
-                "uuid": refreshed_account.uuid,
-                "username": refreshed_account.username,
-                "accessToken": refreshed_account.access_token,
-                "refreshToken": refreshed_account.refresh_token,
-                "clientId": refreshed_account.client_id
-            }),
-        );
+        let _ = app.emit("microsoft-token-refreshed", serde_json::json!({
+            "xuid": refreshed_account.xuid,
+            "exp": refreshed_account.exp,
+            "uuid": refreshed_account.uuid,
+            "username": refreshed_account.username,
+            "accessToken": refreshed_account.access_token,
+            "refreshToken": refreshed_account.refresh_token,
+            "clientId": refreshed_account.client_id
+        }));
+        let _ = app.emit("logs", serde_json::json!({
+            "type": "launcher",
+            "message": "[Launcher:Rust] Microsoft account refreshed"
+        }));
     }
 
     let memory_gb = settings.allocated_ram.max(1);
+    let _ = app.emit("logs", serde_json::json!({
+        "type": "launcher",
+        "message": format!("[Launcher:Rust] Memory GB {}", memory_gb),
+    }));
+
     let loader = get_loader_by_name("forge", "47.4.0")?;
+
+    let _ = app.emit("logs", serde_json::json!({
+        "type": "launcher",
+        "message": format!("[Launcher:Rust] Meta Path {}", meta_dirs.meta.display()),
+    }));
+
+    let _ = app.emit("logs", serde_json::json!({
+        "type": "launcher",
+        "message": format!("[Launcher:Rust] Instance Path {}", instance_dir.display()),
+    }));
+
+    let java_path = meta_dirs.java_versions.join("default").join("bin");
+    let _ = app.emit("logs", serde_json::json!({
+        "type": "launcher",
+        "message": format!("[Launcher:Rust] Java Path {}", java_path.display()),
+    }));
 
     let config = ConfigBuilder::new(meta_dirs.meta.clone(), "1.20.1".to_string(), auth_method)
         .profile(Profile::new("".to_string(), instance_dir.clone()))
-        .runtime_dir(meta_dirs.java_versions.join("default").join("bin"))
+        .runtime_dir(java_path)
         .memory(Memory::Gigabyte(memory_gb as u16))
         .loader(loader)
         .build();
 
-    install(&config, Some(&emitter)).await?;
+    // Install
+    let _ = app.emit("logs", serde_json::json!({
+        "type": "launcher",
+        "message": "[Launcher:Rust] Before Minecraft Installing function..."
+    }));
+    if let Err(e) = install(&config, Some(&emitter)).await {
+        let _ = app.emit("logs", serde_json::json!({
+            "type": "launcher",
+            "message": format!("[Launcher:Rust][ERROR] Install failed: {}", e),
+        }));
+        return Err(e.into());
+    }
 
-    let child = launch(&config, Some(&emitter)).await?;
+    // Launch
+    let _ = app.emit("logs", serde_json::json!({
+        "type": "launcher",
+        "message": "[Launcher:Rust] Launching Minecraft process..."
+    }));
+    let child = match launch(&config, Some(&emitter)).await {
+        Ok(c) => c,
+        Err(e) => {
+            let _ = app.emit("logs", serde_json::json!({
+                "type": "launcher",
+                "message": format!("[Launcher:Rust][ERROR] Failed to launch: {}", e),
+            }));
+            return Err(e.into());
+        }
+    };
     let child_arc = Arc::new(AsyncMutex::new(child));
 
     RUNNING_PROCS
@@ -96,19 +136,34 @@ pub async fn launch_minecraft_with_forge(settings: UserSettings, app: AppHandle)
         .insert("minecraft".to_string(), child_arc.clone());
 
     let _ = app.emit("minecraft-started", "started");
+    let _ = app.emit("logs", serde_json::json!({
+        "type": "launcher",
+        "message": "[Launcher:Rust] Minecraft started!"
+    }));
 
     {
         let app_clone = app.clone();
         tokio::spawn(async move {
             let mut guard = child_arc.lock().await;
-            let _ = guard.wait().await;
+            if let Err(e) = guard.wait().await {
+                let _ = app_clone.emit("logs", serde_json::json!({
+                    "type": "launcher",
+                    "message": format!("[Launcher:Rust][ERROR] Minecraft process exited with error: {}", e),
+                }));
+            }
             RUNNING_PROCS.lock().unwrap().remove("minecraft");
             let _ = app_clone.emit("minecraft-exited", "exited");
+            let _ = app_clone.emit("logs", serde_json::json!({
+                "type": "launcher",
+                "message": "[Launcher:Rust] Minecraft process exited"
+            }));
         });
     }
 
     Ok(())
 }
+
+
 
 async fn get_auth_method_with_validation(
     settings: &UserSettings,
@@ -196,7 +251,11 @@ where
             emitter
                 .on(Event::Console, move |line: String| {
                     println!("Minecraft: {}", line);
-                    let _ = app.emit("logs", line);
+                    let _ = app.emit(                        "logs",
+                    serde_json::json!({
+                        "type": "minecraft",
+                        "message": line
+                    }));
                 })
                 .await;
         });

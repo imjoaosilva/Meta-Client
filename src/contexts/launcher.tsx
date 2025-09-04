@@ -1,4 +1,4 @@
-import type { MicrosoftAccount, UserSettings } from '@/@types/launcher';
+import type { Logs, MicrosoftAccount, UserSettings } from '@/@types/launcher';
 import AuthService from '@/services/auth';
 import { LauncherService } from '@/services/launcher';
 import { invoke } from '@tauri-apps/api/core';
@@ -30,9 +30,9 @@ interface LauncherContextType {
   updateModpack: () => void;
   rootPath: string;
   updateRootPath: (path: string) => void;
-  logs: string[]
+  logs: Logs[]
+  updateLogs: (logs: Logs) => void
 }
-
 const LauncherContext = createContext<LauncherContextType | undefined>(undefined);
 
 export function LauncherProvider({ children }: { children: ReactNode }) {
@@ -46,16 +46,28 @@ export function LauncherProvider({ children }: { children: ReactNode }) {
   const [progressStatus, setProgressStatus] = useState<ProgressStatus>('modpack_update');
   const [globalLoading, setGlobalLoading] = useState(true);
   const [rootPath, setRootPath] = useState<string>('');
-  const [logs, setLogs] = useState<string[]>([]);
+  const [logs, setLogs] = useState<Logs[]>([]);
 
   useEffect(() => {
     const init = async () => {
       const settings = launcherService.getUserSettings();
       setUserSettings(settings);
+      updateLogs({
+        message: `[Launcher] Loaded UserSettings ${JSON.stringify(settings)}`,
+        type: 'launcher'
+      })
 
       const path = await invoke('get_root_dir');
       setRootPath(path as string)
+      updateLogs({
+        message: `[Launcher] Root Dir: ${path}`,
+        type: 'launcher'
+      })
       const needsUpdate = await checkModpackUpdate();
+      updateLogs({
+        message: `[Launcher] Modpack need update: ${needsUpdate}`,
+        type: 'launcher'
+      })
       if (!needsUpdate) setProgressStatus('launch');
     };
     void init();
@@ -98,10 +110,18 @@ export function LauncherProvider({ children }: { children: ReactNode }) {
     void setupProgressListener();
   }, []);
 
+  interface listenPayload {
+    message: string,
+    type: 'minecraft' | 'launcher'
+  }
+
   useEffect(() => {
     const setupLogsListener = async () => {
-      const unlisten = await listen<string>('logs', (event) => {
-        setLogs((prev) => [...prev, event.payload]);
+      const unlisten = await listen<listenPayload>('logs', (event) => {
+        updateLogs({
+          message: event.payload.message,
+          type: event.payload.type
+        })
       });
       return unlisten;
     };
@@ -171,6 +191,10 @@ export function LauncherProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(timeoutId);
   }, [userSettings.authMethod, userSettings.microsoftAccount?.exp]);
 
+  const updateLogs = ({ message, type }: Logs) => {
+    setLogs((prev) => [...prev, { message: message, type }]);
+  }
+
   useEffect(() => {
     const setupTokenRefreshListener = async () => {
       const unlisten = await listen<MicrosoftAccount>('microsoft-token-refreshed', (event) => {
@@ -193,6 +217,10 @@ export function LauncherProvider({ children }: { children: ReactNode }) {
     const newSettings = { ...userSettings, ...settings };
     launcherService.saveUserSettings(newSettings);
     setUserSettings(newSettings);
+    updateLogs({
+      message: '[Launcher] Updated UserSettings',
+      type: 'launcher'
+    })
   };
 
   const updateRootPath = async (path: string) => {
@@ -214,14 +242,27 @@ export function LauncherProvider({ children }: { children: ReactNode }) {
   };
 
   const Logout = () => {
-    updateUserSettings({ username: 'MetaPlayer' });
+    updateUserSettings({ username: 'MetaPlayer', authMethod: 'offline' });
     window.location.href = '/';
+
+    updateLogs({
+      message: `[Launcher] User logout.`,
+      type: 'launcher'
+    })
   };
 
   const LaunchMinecraft = async () => {
     const transformedSettings = transformUserSettingsForBackend(userSettings);
+    updateLogs({
+      message: `[Launcher] Launching minecraft...`,
+      type: 'launcher'
+    })
     setProgressStatus('launching');
-    await invoke('launch_modpack', { settings: transformedSettings });
+    const test = await invoke('launch_modpack', { settings: transformedSettings });
+    updateLogs({
+      message: `[Launcher] launch_modpack error=${test}`,
+      type: 'launcher'
+    })
   };
 
   const transformUserSettingsForBackend = (settings: UserSettings) => ({
@@ -250,7 +291,8 @@ export function LauncherProvider({ children }: { children: ReactNode }) {
         updateModpack,
         rootPath,
         updateRootPath,
-        logs
+        logs,
+        updateLogs
       }}
     >
       {children}

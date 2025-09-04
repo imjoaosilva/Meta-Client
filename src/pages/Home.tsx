@@ -20,7 +20,7 @@ import { open, } from '@tauri-apps/plugin-dialog';
 import { Switch } from "@/components/ui/switch"
 import { Progress } from '@/components/ui/progress';
 import { app } from '@tauri-apps/api';
-import type { UserSettings } from '@/@types/launcher';
+import type { Logs, UserSettings } from '@/@types/launcher';
 import { check } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 
@@ -49,7 +49,8 @@ export const HomePage = () => {
     updateModpack,
     rootPath,
     updateRootPath,
-    logs
+    logs,
+    updateLogs
   } = useLauncher();
 
   const [version, setVersion] = useState('');
@@ -60,7 +61,19 @@ export const HomePage = () => {
   );
 
   useEffect(() => {
-    app.getVersion().then(setVersion);
+    app.getVersion().then((v) => {
+      updateLogs({
+        message: `[Launcher] Updated version: V${v}`,
+        type: 'launcher'
+      })
+      setVersion(v)
+    }).catch(e => {
+      updateLogs({
+        message: `[Launcher] Error: ${e}`,
+        type: 'launcher'
+      })
+    })
+
   }, []);
 
   const handleButtonClick = () => {
@@ -150,7 +163,7 @@ export const HomePage = () => {
                 </div>
               </motion.div>
               {userSettings.developer_mode && logs.length > 0 && <>
-                <Terminal logs={logs} />
+                <Terminal logs={logs} launcher_logs={userSettings.launcher_logs} />
               </>}
               <div className="flex flex-col items-center gap-4 xl:gap-6">
                 <motion.img
@@ -412,6 +425,14 @@ function Settings({ onBack, userSettings, updateUserSettings, root_dir, updateRo
             />
             <p className='text-white text-[12px]'>Developer Mode</p>
           </div>
+          <div className='mt-4 flex items-center gap-2'>
+            <Switch
+              className="data-[state=checked]:bg-[#a2d9fd] data-[state=unchecked]:bg-[#3f3f3f49]"
+              checked={formData.launcher_logs}
+              onCheckedChange={(event) => handleInputChange("launcher_logs", event)}
+            />
+            <p className='text-white text-[12px]'>Launcher Logs</p>
+          </div>
         </>}
       </div>
     </div >
@@ -419,21 +440,27 @@ function Settings({ onBack, userSettings, updateUserSettings, root_dir, updateRo
 }
 
 interface TerminalProps {
-  logs: string[];
+  logs: Logs[],
+  launcher_logs: boolean;
 }
 
-export default function Terminal({ logs }: TerminalProps) {
+export default function Terminal({ logs, launcher_logs }: TerminalProps) {
   const endRef = useRef<HTMLDivElement>(null);
+  const [logsT, setLogsT] = useState(logs);
 
   useEffect(() => {
+    setLogsT(logsT.filter(e => e.type == "minecraft" || e.type == "launcher" && launcher_logs))
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [logs]);
 
+  if (logsT.length < 1) return
+
+
   return (
-    <div className="bg-black mt-8 text-white max-w-130 font-mono text-sm p-2 rounded-lg h-[320px] overflow-y-auto shadow-inner">
-      {logs.map((line, i) => (
-        <div key={i} className="whitespace-pre-wrap">
-          {line}
+    <div className="bg-black mt-8 max-w-130 font-mono text-sm p-2 rounded-lg h-[320px] min-w-100 overflow-y-auto shadow-inner">
+      {logsT.map((line, i) => (
+        <div key={i} className={`whitespace-pre-wrap ${line.type == 'minecraft' ? 'text-white' : 'text-[#a1ece99f]'}`}>
+          {line.message}
         </div>
       ))}
       <div ref={endRef} />
