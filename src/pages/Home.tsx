@@ -32,7 +32,7 @@ const teamMembers = [
   { name: 'Kiyo', role: 'Lore Maker' },
   { name: 'Belbi', role: 'Skin/Lore Maker' },
   { name: 'Yoruno', role: 'Modpack Manager' },
-  { name: 'Twi (Hells Angels)', role: 'Skin Maker' },
+  { name: 'Twi', role: 'Skin Maker' },
   { name: 'Ark', role: 'Creative Thinker' },
 ];
 
