@@ -24,6 +24,11 @@ pub static RUNNING_PROCS: Lazy<
 > = Lazy::new(|| std::sync::Mutex::new(HashMap::new()));
 
 pub async fn launch_minecraft_with_forge(settings: UserSettings, app: AppHandle) -> Result<()> {
+    let _ = app.emit("logs", serde_json::json!({
+        "type": "launcher",
+        "message": "[Launcher:Rust] minecraft.rs Launch function called",
+    }));
+
     let meta_dirs = MetaDirectories::new()?;
     meta_dirs.ensure()?;
 
@@ -69,7 +74,7 @@ pub async fn launch_minecraft_with_forge(settings: UserSettings, app: AppHandle)
         }));
     }
 
-    let memory_gb = settings.allocated_ram.max(1);
+    let memory_gb = settings.allocated_ram.max(1.0);
     let _ = app.emit("logs", serde_json::json!({
         "type": "launcher",
         "message": format!("[Launcher:Rust] Memory GB {}", memory_gb),

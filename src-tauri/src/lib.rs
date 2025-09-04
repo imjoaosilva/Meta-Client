@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use crate::meta::MetaDirectories;
 use std::path::PathBuf;
+use tauri::Emitter;
 
 pub mod meta;
 pub mod minecraft;
@@ -10,7 +11,7 @@ pub mod modpack;
 pub struct UserSettings {
     pub username: String,
     #[serde(rename = "allocatedRam")]
-    pub allocated_ram: u32,
+    pub allocated_ram: f32,
     #[serde(rename = "authMethod")]
     pub auth_method: String, // "offline" or "microsoft"
     #[serde(rename = "microsoftAccount")]
@@ -34,12 +35,39 @@ pub struct MicrosoftAccount {
 }
 
 #[tauri::command]
-async fn get_root_dir() -> Result<PathBuf, String> {
-    let meta_dirs = MetaDirectories::new().map_err(|e| e.to_string())?;
-    meta_dirs.ensure().map_err(|e| e.to_string())?;
+async fn get_root_dir(app: tauri::AppHandle) -> Result<PathBuf, String> {
+    let _ = app.emit("logs", serde_json::json!({
+        "type": "launcher",
+        "message": "[Launcher:Rust] Fetching root dir..."
+    }));
 
-    Ok(meta_dirs.get_root_dir().to_path_buf())
+    let meta_dirs = MetaDirectories::new()
+        .map_err(|e| {
+            let _ = app.emit("logs", serde_json::json!({
+                "type": "launcher",
+                "message": format!("[Launcher:Rust][ERROR] Failed to init MetaDirectories: {}", e)
+            }));
+            e.to_string()
+        })?;
+
+    if let Err(e) = meta_dirs.ensure() {
+        let _ = app.emit("logs", serde_json::json!({
+            "type": "launcher",
+            "message": format!("[Launcher:Rust][ERROR] Failed to ensure MetaDirectories: {}", e)
+        }));
+        return Err(e.to_string());
+    }
+
+    let root_dir = meta_dirs.get_root_dir().to_path_buf();
+
+    let _ = app.emit("logs", serde_json::json!({
+        "type": "launcher",
+        "message": format!("[Launcher:Rust] Root dir found: {}", root_dir.display())
+    }));
+
+    Ok(root_dir)
 }
+
 
 #[tauri::command]
 async fn set_root_dir(path: String) -> Result<(), String>{
@@ -74,7 +102,8 @@ async fn update_modpack(app: tauri::AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-async fn launch_modpack(app: tauri::AppHandle, settings: UserSettings) -> Result<(), String> {
+async fn launch_meta(app: tauri::AppHandle, settings: UserSettings) -> Result<(), String> {
+
     match crate::minecraft::launch_minecraft_with_forge(settings, app.clone()).await {
         Ok(_) => Ok(()),
         Err(e) => Err(format!("Failed to launch modpack: {}", e)),
@@ -275,7 +304,7 @@ pub fn run() {
             open_microsoft_auth_and_get_url,
             extract_code_from_redirect_url,
             open_microsoft_auth_modal,
-            launch_modpack,
+            launch_meta,
             check_manifest_update,
             update_modpack,
             get_root_dir,

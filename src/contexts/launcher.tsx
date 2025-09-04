@@ -252,15 +252,19 @@ export function LauncherProvider({ children }: { children: ReactNode }) {
   };
 
   const LaunchMinecraft = async () => {
+    updateLogs({
+      message: `[Launcher] Called LaunchMinecraft Function`,
+      type: 'launcher'
+    })
     const transformedSettings = transformUserSettingsForBackend(userSettings);
     updateLogs({
       message: `[Launcher] Launching minecraft...`,
       type: 'launcher'
     })
     setProgressStatus('launching');
-    const test = await invoke('launch_modpack', { settings: transformedSettings });
+    const test = await invoke('launch_meta', { settings: transformedSettings });
     updateLogs({
-      message: `[Launcher] launch_modpack error=${test}`,
+      message: `[Launcher] launch_meta error=${test}`,
       type: 'launcher'
     })
   };

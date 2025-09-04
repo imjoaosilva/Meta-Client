@@ -78,6 +78,11 @@ export const HomePage = () => {
 
   const handleButtonClick = () => {
 
+    updateLogs({
+      message: `[Launcher] Button State: ${progressStatus}`,
+      type: 'launcher'
+    })
+
     if (progressStatus === 'modpack_update') {
       updateModpack()
     }
@@ -440,26 +445,34 @@ function Settings({ onBack, userSettings, updateUserSettings, root_dir, updateRo
 }
 
 interface TerminalProps {
-  logs: Logs[],
+  logs: Logs[];
   launcher_logs: boolean;
 }
 
 export default function Terminal({ logs, launcher_logs }: TerminalProps) {
   const endRef = useRef<HTMLDivElement>(null);
-  const [logsT, setLogsT] = useState(logs);
+  const [logsT, setLogsT] = useState<Logs[]>([]);
 
   useEffect(() => {
-    setLogsT(logsT.filter(e => e.type == "minecraft" || e.type == "launcher" && launcher_logs))
+    setLogsT(
+      logs.filter(
+        (e) => e.type === "minecraft" || (launcher_logs && e.type === "launcher")
+      )
+    );
+
     endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [logs]);
+  }, [logs, launcher_logs]);
 
-  if (logsT.length < 1) return
-
+  if (logsT.length < 1) return null;
 
   return (
     <div className="bg-black mt-8 max-w-130 font-mono text-sm p-2 rounded-lg h-[320px] min-w-100 overflow-y-auto shadow-inner">
       {logsT.map((line, i) => (
-        <div key={i} className={`whitespace-pre-wrap ${line.type == 'minecraft' ? 'text-white' : 'text-[#a1ece99f]'}`}>
+        <div
+          key={i}
+          className={`whitespace-pre-wrap ${line.type === "minecraft" ? "text-white" : "text-[#a1ece99f]"
+            }`}
+        >
           {line.message}
         </div>
       ))}
